@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class DatabaseManager {
-    private static final String DB_URL = "jdbc:h2:./library_db;AUTO_SERVER=TRUE";
+	private static final String DB_URL = "jdbc:h2:./library_db;AUTO_SERVER=TRUE";
     private static final String USER = "sa";
     private static final String PASSWORD = "";
 
@@ -52,9 +52,28 @@ public class DatabaseManager {
                     "FOREIGN KEY(user_id) REFERENCES users(id), " +
                     "FOREIGN KEY(book_id) REFERENCES books(id))");
 
+            // 檢查是否需要匯入初始 JSON
             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM users");
             if (rs.next() && rs.getInt(1) == 0) {
                 importJsonData(conn);
+            }
+            
+            // 資料庫中沒有管理員，自動生成一個
+            try (PreparedStatement checkAdmin = conn.prepareStatement("SELECT COUNT(*) FROM users WHERE role_level = 'ADMIN'")) {
+                ResultSet rsAdmin = checkAdmin.executeQuery();
+                if (rsAdmin.next() && rsAdmin.getInt(1) == 0) {
+                    stmt.execute("INSERT INTO users (student_no, name, password, role_level, status, created_at) " +
+                            "VALUES ('B13204013', '系統管理員', 'B13204013', 'ADMIN', 'ACTIVE', '2026-01-01 00:00:00')");
+                    System.out.println("ℹ️ 已自動為系統配置一組管理員測試帳號 [帳號: B13204013 / 密碼: B13204013]");
+                    
+                    stmt.execute("INSERT INTO users (student_no, name, password, role_level, status, created_at) " +
+                            "VALUES ('B13204043', '系統管理員', 'B13204043', 'ADMIN', 'ACTIVE', '2026-01-01 00:00:00')");
+                    System.out.println("ℹ️ 已自動為系統配置一組管理員測試帳號 [帳號: B13204043 / 密碼: B13204043]");
+                    
+                    stmt.execute("INSERT INTO users (student_no, name, password, role_level, status, created_at) " +
+                            "VALUES ('R13945041', '系統管理員', 'R13945041', 'ADMIN', 'ACTIVE', '2026-01-01 00:00:00')");
+                    System.out.println("ℹ️ 已自動為系統配置一組管理員測試帳號 [帳號: R13945041 / 密碼: R13945041]");
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -63,9 +82,9 @@ public class DatabaseManager {
 
     private static void importJsonData(Connection conn) throws Exception {
         Gson gson = new Gson();
-        System.out.println("🚀 系統首次啟動：正在以 UTF-8 編碼解析 250 筆原始 JSON 並導入 SQL 資料庫...");
+        System.out.println("系統首次啟動：正在以 UTF-8 編碼解析 250 筆原始 JSON 並導入 SQL 資料庫...");
 
-        // 匯入 Users.json (指定 UTF_8 避免亂碼)
+        // 匯入 Users.json
         List<User> jsonUsers;
         try (InputStreamReader isr = new InputStreamReader(new FileInputStream("Users.json"), StandardCharsets.UTF_8)) {
             jsonUsers = gson.fromJson(isr, new TypeToken<List<User>>(){}.getType());
@@ -81,7 +100,7 @@ public class DatabaseManager {
             pstmt.executeBatch();
         }
 
-        // 匯入 Books.json (指定 UTF_8 避免亂碼)
+        // 匯入 Books.json
         List<Book> jsonBooks;
         try (InputStreamReader isr = new InputStreamReader(new FileInputStream("Books.json"), StandardCharsets.UTF_8)) {
             jsonBooks = gson.fromJson(isr, new TypeToken<List<Book>>(){}.getType());
