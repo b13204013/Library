@@ -602,13 +602,13 @@ public class MainApp extends JFrame {
     	
 
     	if ("VIP".equals(this.currentUserRole)) {
-    	    // VIP 可以借 1, 3, 7, 14 天
-    	    daysOptions = new String[]{"3 天", "7 天", "14 天", "28 天"};
-    	    daysMapping = new int[]{3, 7, 14, 28};
+    	    // VIP 可以借 1, 3, 7, 14, 28 天
+    	    daysOptions = new String[]{"1 天", "3 天", "7 天", "14 天", "28 天"};
+    	    daysMapping = new int[]{1, 3, 7, 14, 28};
     	} else {
-    	    // 一般用戶 (USER) 只能借 1, 3, 7 天
-    	    daysOptions = new String[]{"3 天", "7 天"};
-    	    daysMapping = new int[]{3, 7};
+    	    // 一般用戶 (USER) 只能借 1, 3, 7, 14 天
+    	    daysOptions = new String[]{"1 天", "3 天", "7 天", "14 天"};
+    	    daysMapping = new int[]{1, 3, 7, 14};
     	}
 
     	// 2. 顯示選擇對話框

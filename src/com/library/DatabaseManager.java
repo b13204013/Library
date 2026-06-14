@@ -64,15 +64,15 @@ public class DatabaseManager {
                 if (rsAdmin.next() && rsAdmin.getInt(1) == 0) {
                     stmt.execute("INSERT INTO users (student_no, name, password, role_level, status, created_at) " +
                             "VALUES ('B13204013', '系統管理員', 'B13204013', 'ADMIN', 'ACTIVE', '2026-01-01 00:00:00')");
-                    System.out.println("ℹ️ 已自動為系統配置一組管理員測試帳號 [帳號: B13204013 / 密碼: B13204013]");
+                    System.out.println("已自動為系統配置一組管理員測試帳號 [帳號: B13204013 / 密碼: B13204013]");
                     
                     stmt.execute("INSERT INTO users (student_no, name, password, role_level, status, created_at) " +
                             "VALUES ('B13204043', '系統管理員', 'B13204043', 'ADMIN', 'ACTIVE', '2026-01-01 00:00:00')");
-                    System.out.println("ℹ️ 已自動為系統配置一組管理員測試帳號 [帳號: B13204043 / 密碼: B13204043]");
+                    System.out.println("已自動為系統配置一組管理員測試帳號 [帳號: B13204043 / 密碼: B13204043]");
                     
                     stmt.execute("INSERT INTO users (student_no, name, password, role_level, status, created_at) " +
                             "VALUES ('R13945041', '系統管理員', 'R13945041', 'ADMIN', 'ACTIVE', '2026-01-01 00:00:00')");
-                    System.out.println("ℹ️ 已自動為系統配置一組管理員測試帳號 [帳號: R13945041 / 密碼: R13945041]");
+                    System.out.println("已自動為系統配置一組管理員測試帳號 [帳號: R13945041 / 密碼: R13945041]");
                 }
             }
         } catch (Exception e) {
@@ -141,7 +141,7 @@ public class DatabaseManager {
             }
             pstmt.executeBatch();
         }
-        System.out.println("✅ 資料庫持久化與相對時間解析全部成功！");
+        System.out.println("資料庫持久化與相對時間解析全部成功！");
     }
 
     public static Timestamp parseRelativeTimestamp(String offsetStr) {
