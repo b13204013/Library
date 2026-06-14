@@ -8,8 +8,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
 
 public class MainApp extends JFrame {
 	
@@ -103,7 +101,10 @@ public class MainApp extends JFrame {
         btnAdminAddBook.setBackground(adminBtnColor); btnAdminAddBook.setForeground(Color.WHITE);
 
         sidePanel.add(userCard); sidePanel.add(Box.createVerticalStrut(15));
-        sidePanel.add(btnMyRecords); sidePanel.add(Box.createVerticalStrut(10));
+        if (!"ADMIN".equals(this.currentUserRole)) {
+            sidePanel.add(btnMyRecords); 
+            sidePanel.add(Box.createVerticalStrut(10));
+        }
         sidePanel.add(btnBookHistory); sidePanel.add(Box.createVerticalStrut(10));
         
         if ("ADMIN".equals(this.currentUserRole)) {
@@ -370,14 +371,11 @@ public class MainApp extends JFrame {
 
     
     private void refreshBookCards(String searchColumn, String keyword) {
-
         cardsPanel.removeAll(); 
-        cardsPanel.setVisible(false);
-
+        
         // 先獲取當前使用者未歸還的書籍與是否過期
-        Map<Integer, Long> overdueDaysMap = new HashMap<>();
         ArrayList<Integer> myBorrowedIds = new ArrayList<>();
-
+        ArrayList<Integer> myOverdueIds = new ArrayList<>();
         String checkMySql = "SELECT book_id, due_date FROM borrow_records WHERE user_id = ? AND return_date IS NULL";
         try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(checkMySql)) {
             pstmt.setInt(1, currentUserId);
@@ -385,15 +383,8 @@ public class MainApp extends JFrame {
             while (rs.next()) {
                 int bId = rs.getInt("book_id");
                 myBorrowedIds.add(bId);
-                
-                // 計算逾期天數
-                java.sql.Timestamp dueTs = rs.getTimestamp("due_date");
-                if (dueTs != null) {
-                    LocalDateTime dueDate = dueTs.toLocalDateTime();
-                    if (dueDate.isBefore(LocalDateTime.now())) {
-                        long days = ChronoUnit.DAYS.between(dueDate, LocalDateTime.now());
-                        overdueDaysMap.put(bId, days);
-                    }
+                if (rs.getTimestamp("due_date").toLocalDateTime().isBefore(LocalDateTime.now())) {
+                    myOverdueIds.add(bId);
                 }
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -451,9 +442,8 @@ public class MainApp extends JFrame {
                 // 在書目中明確標出個人借閱狀態
                 String tagPrefix = "";
                 if (myBorrowedIds.contains(id)) {
-                    if (overdueDaysMap.containsKey(id)) {
-                        // 顯示動態天數
-                        tagPrefix = "<font color='#c0392b'>[您的借閱已逾期 " + overdueDaysMap.get(id) + " 天！]</font> ";
+                    if (myOverdueIds.contains(id)) {
+                        tagPrefix = "<font color='#c0392b'>[您的借閱已逾期！]</font> ";
                     } else {
                         tagPrefix = "<font color='#2980b9'>[您正借閱此書]</font> ";
                     }
@@ -481,25 +471,39 @@ public class MainApp extends JFrame {
                 btnAction.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
                 btnAction.putClientProperty("JButton.buttonType", "roundRect");
                 
+                boolean isAdmin = "ADMIN".equals(this.currentUserRole);
+
                 if (isAvailable) {
-                    btnAction.setText("辦理借閱");
-                    btnAction.setBackground(MORANDI_PRIMARY); btnAction.setForeground(Color.WHITE);
-                    btnAction.addActionListener(e -> handleBorrow(id));
-                    btnPanel.add(btnAction);
-                } else {
-                    if (myBorrowedIds.contains(id)) {
-                        btnAction.setText("辦理歸還");
-                        btnAction.setBackground(new Color(238, 240, 245)); btnAction.setForeground(MORANDI_TEXT);
-                        btnAction.addActionListener(e -> handleReturn(id, rawStatus));
+                    if (!isAdmin) {
+                        // 一般使用者：顯示借閱按鈕
+                        btnAction.setText("辦理借閱");
+                        btnAction.setBackground(MORANDI_PRIMARY); 
+                        btnAction.setForeground(Color.WHITE);
+                        btnAction.addActionListener(e -> handleBorrow(id));
                         btnPanel.add(btnAction);
+                    }
+                } else {
+                    // 書籍外借中
+                    if (myBorrowedIds.contains(id)) {
+                        if (!isAdmin) {
+                            // 一般使用者：顯示歸還按鈕
+                            btnAction.setText("辦理歸還");
+                            btnAction.setBackground(new Color(238, 240, 245)); 
+                            btnAction.setForeground(MORANDI_TEXT);
+                            btnAction.addActionListener(e -> handleReturn(id, rawStatus));
+                            btnPanel.add(btnAction);
+                        }
                     } else {
-                        // 被別人借走時顯示線上預約
-                        JButton btnReserve = new JButton("線上預約書籍");
-                        btnReserve.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
-                        btnReserve.setBackground(new Color(110, 137, 166)); btnReserve.setForeground(Color.WHITE);
-                        btnReserve.putClientProperty("JButton.buttonType", "roundRect");
-                        btnReserve.addActionListener(e -> handleReserve(id, rawStatus));
-                        btnPanel.add(btnReserve);
+                        // 書籍被他人借走：僅限一般使用者顯示預約按鈕
+                        if (!isAdmin) {
+                            JButton btnReserve = new JButton("線上預約書籍");
+                            btnReserve.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
+                            btnReserve.setBackground(new Color(110, 137, 166)); 
+                            btnReserve.setForeground(Color.WHITE);
+                            btnReserve.putClientProperty("JButton.buttonType", "roundRect");
+                            btnReserve.addActionListener(e -> handleReserve(id, rawStatus));
+                            btnPanel.add(btnReserve);
+                        }
                     }
                 }
 
@@ -558,8 +562,7 @@ public class MainApp extends JFrame {
             
         } catch (SQLException e) { e.printStackTrace(); }
         
-        cardsPanel.setVisible(true); 
-        cardsPanel.revalidate(); // 強制重新計算排版
+        cardsPanel.revalidate();
         cardsPanel.repaint();
     }
 
