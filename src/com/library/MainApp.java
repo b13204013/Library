@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 public class MainApp extends JFrame {
 	
@@ -371,11 +373,13 @@ public class MainApp extends JFrame {
 
     
     private void refreshBookCards(String searchColumn, String keyword) {
-        cardsPanel.removeAll(); 
+    	cardsPanel.removeAll(); 
+        cardsPanel.setVisible(false); 
         
         // 先獲取當前使用者未歸還的書籍與是否過期
+        Map<Integer, Long> overdueDaysMap = new HashMap<>();
         ArrayList<Integer> myBorrowedIds = new ArrayList<>();
-        ArrayList<Integer> myOverdueIds = new ArrayList<>();
+
         String checkMySql = "SELECT book_id, due_date FROM borrow_records WHERE user_id = ? AND return_date IS NULL";
         try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(checkMySql)) {
             pstmt.setInt(1, currentUserId);
@@ -383,8 +387,15 @@ public class MainApp extends JFrame {
             while (rs.next()) {
                 int bId = rs.getInt("book_id");
                 myBorrowedIds.add(bId);
-                if (rs.getTimestamp("due_date").toLocalDateTime().isBefore(LocalDateTime.now())) {
-                    myOverdueIds.add(bId);
+                
+                // 計算逾期天數
+                java.sql.Timestamp dueTs = rs.getTimestamp("due_date");
+                if (dueTs != null) {
+                    LocalDateTime dueDate = dueTs.toLocalDateTime();
+                    if (dueDate.isBefore(LocalDateTime.now())) {
+                        long days = ChronoUnit.DAYS.between(dueDate, LocalDateTime.now());
+                        overdueDaysMap.put(bId, days);
+                    }
                 }
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -442,8 +453,9 @@ public class MainApp extends JFrame {
                 // 在書目中明確標出個人借閱狀態
                 String tagPrefix = "";
                 if (myBorrowedIds.contains(id)) {
-                    if (myOverdueIds.contains(id)) {
-                        tagPrefix = "<font color='#c0392b'>[您的借閱已逾期！]</font> ";
+                    if (overdueDaysMap.containsKey(id)) {
+                        // 顯示動態天數
+                        tagPrefix = "<font color='#c0392b'>[您的借閱已逾期 " + overdueDaysMap.get(id) + " 天！]</font> ";
                     } else {
                         tagPrefix = "<font color='#2980b9'>[您正借閱此書]</font> ";
                     }
@@ -562,7 +574,8 @@ public class MainApp extends JFrame {
             
         } catch (SQLException e) { e.printStackTrace(); }
         
-        cardsPanel.revalidate();
+        cardsPanel.setVisible(true); 
+        cardsPanel.revalidate(); 
         cardsPanel.repaint();
     }
 
