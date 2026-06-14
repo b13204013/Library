@@ -8,9 +8,11 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 public class MainApp extends JFrame {
-    
+	
     public static void main(String[] args) {
         try { 
             com.formdev.flatlaf.FlatLightLaf.setup(); 
@@ -67,7 +69,7 @@ public class MainApp extends JFrame {
         lblName.setFont(new Font("Microsoft JhengHei", Font.BOLD, 15));
         lblName.setForeground(MORANDI_TEXT);
         
-        JLabel lblRole = new JLabel("權限: " + ("ADMIN".equals(currentUserRole) ? "系統管理員" : ("VIP".equals(currentUserRole) ? "VIP 會員" : "普通會員")));
+        JLabel lblRole = new JLabel("權限: " + ("ADMIN".equals(currentUserRole) ? "系統管理員" : ("VIP".equals(currentUserRole) ? "VIP 尊榮成員" : "普通成員")));
         lblRole.setFont(new Font("Microsoft JhengHei", Font.BOLD, 13));
         lblRole.setForeground("ADMIN".equals(currentUserRole) ? new Color(194, 122, 44) : ("VIP".equals(currentUserRole) ? new Color(110, 84, 149) : Color.GRAY));
         userCard.add(lblName); userCard.add(lblRole);
@@ -360,19 +362,22 @@ public class MainApp extends JFrame {
         
         SwingUtilities.invokeLater(() -> {
             checkOverdueAndReminders();
-            checkReservationNotifications(); // 修正6：登入推播檢查
+            checkReservationNotifications(); // 
         });
         refreshBookCards("", ""); // 初始化畫面
         setVisible(true);
     }
 
-    // ==================== 繪製圖書卡片核心 (修正3、修正4、修正6) ====================
+    
     private void refreshBookCards(String searchColumn, String keyword) {
+
         cardsPanel.removeAll(); 
-        
-        // 修正4：先獲取當前使用者未歸還的書籍與是否過期
+        cardsPanel.setVisible(false);
+
+        // 先獲取當前使用者未歸還的書籍與是否過期
+        Map<Integer, Long> overdueDaysMap = new HashMap<>();
         ArrayList<Integer> myBorrowedIds = new ArrayList<>();
-        ArrayList<Integer> myOverdueIds = new ArrayList<>();
+
         String checkMySql = "SELECT book_id, due_date FROM borrow_records WHERE user_id = ? AND return_date IS NULL";
         try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(checkMySql)) {
             pstmt.setInt(1, currentUserId);
@@ -380,8 +385,15 @@ public class MainApp extends JFrame {
             while (rs.next()) {
                 int bId = rs.getInt("book_id");
                 myBorrowedIds.add(bId);
-                if (rs.getTimestamp("due_date").toLocalDateTime().isBefore(LocalDateTime.now())) {
-                    myOverdueIds.add(bId);
+                
+                // 計算逾期天數
+                java.sql.Timestamp dueTs = rs.getTimestamp("due_date");
+                if (dueTs != null) {
+                    LocalDateTime dueDate = dueTs.toLocalDateTime();
+                    if (dueDate.isBefore(LocalDateTime.now())) {
+                        long days = ChronoUnit.DAYS.between(dueDate, LocalDateTime.now());
+                        overdueDaysMap.put(bId, days);
+                    }
                 }
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -421,7 +433,7 @@ public class MainApp extends JFrame {
                 int year = rs.getInt("publish_year");
                 String rawStatus = rs.getString("status"); 
 
-                // 修正6：解析複合型預約狀態 (例如 BORROWED_RES:2)
+                // 解析複合型預約狀態 (例如 BORROWED_RES:2)
                 boolean isBorrowed = rawStatus.startsWith("BORROWED");
                 boolean isAvailable = "AVAILABLE".equals(rawStatus);
 
@@ -436,11 +448,12 @@ public class MainApp extends JFrame {
                 JPanel infoPanel = new JPanel(new GridLayout(3, 1, 2, 2)); 
                 infoPanel.setBackground(Color.WHITE);
                 
-                // 💡 修正4：在書目中明確標出個人借閱狀態
+                // 在書目中明確標出個人借閱狀態
                 String tagPrefix = "";
                 if (myBorrowedIds.contains(id)) {
-                    if (myOverdueIds.contains(id)) {
-                        tagPrefix = "<font color='#c0392b'>[您的借閱已逾期！]</font> ";
+                    if (overdueDaysMap.containsKey(id)) {
+                        // 顯示動態天數
+                        tagPrefix = "<font color='#c0392b'>[您的借閱已逾期 " + overdueDaysMap.get(id) + " 天！]</font> ";
                     } else {
                         tagPrefix = "<font color='#2980b9'>[您正借閱此書]</font> ";
                     }
@@ -480,7 +493,7 @@ public class MainApp extends JFrame {
                         btnAction.addActionListener(e -> handleReturn(id, rawStatus));
                         btnPanel.add(btnAction);
                     } else {
-                        // 💡 修正6：被別人借走時顯示線上預約
+                        // 被別人借走時顯示線上預約
                         JButton btnReserve = new JButton("線上預約書籍");
                         btnReserve.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
                         btnReserve.setBackground(new Color(110, 137, 166)); btnReserve.setForeground(Color.WHITE);
@@ -490,7 +503,7 @@ public class MainApp extends JFrame {
                     }
                 }
 
-                // 💡 修正3：管理員下架管制 - 若被借出（isBorrowed）則禁用按鈕並提示
+                // 管理員下架管制 - 若被借出（isBorrowed）則禁用按鈕並提示
                 if ("ADMIN".equals(this.currentUserRole)) {
                     JButton btnDelete = new JButton("下架書籍");
                     btnDelete.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
@@ -498,7 +511,7 @@ public class MainApp extends JFrame {
                     btnDelete.setForeground(Color.WHITE);
                     btnDelete.putClientProperty("JButton.buttonType", "roundRect");
                     
-                    // 💡 設定：若外借中，鎖定按鈕
+                    // 若外借中，鎖定按鈕
                     if (isBorrowed) {
                         btnDelete.setEnabled(false);
                         btnDelete.setToolTipText("書籍外借中，暫時無法下架");
@@ -545,17 +558,65 @@ public class MainApp extends JFrame {
             
         } catch (SQLException e) { e.printStackTrace(); }
         
-        cardsPanel.revalidate();
+        cardsPanel.setVisible(true); 
+        cardsPanel.revalidate(); // 強制重新計算排版
         cardsPanel.repaint();
     }
 
     private void handleBorrow(int bookId) {
-        String[] daysOptions = {"1 天", "3 天", "7 天", "14 天"};
-        if ("USER".equals(this.currentUserRole)) daysOptions = new String[]{"1 天", "3 天", "7 天"};
-        int choice = JOptionPane.showOptionDialog(this, "請選擇借閱期限：", "期限選擇", 0, 3, null, daysOptions, daysOptions[1]);
-        if (choice == -1) return;
-        int days = (choice == 0) ? 1 : (choice == 1 ? 3 : (choice == 2 ? 7 : 14));
+    	String checkSql = "SELECT COUNT(*) FROM borrow_records WHERE user_id = ? AND return_date IS NULL AND due_date < NOW()";
+        try (Connection conn = DatabaseManager.getConnection(); 
+             PreparedStatement pstmt = conn.prepareStatement(checkSql)) {
+            pstmt.setInt(1, currentUserId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                JOptionPane.showMessageDialog(this, "借閱失敗：您有書籍已逾期且未繳清罰款，請先完成歸還與罰款結清！");
+                return; // 嚴格阻擋借閱
+            }
+        } catch (Exception ex) { ex.printStackTrace(); return; }
+    	
+    	String countSql = "SELECT COUNT(*) FROM borrow_records WHERE user_id = ? AND return_date IS NULL";
+        try (Connection conn = DatabaseManager.getConnection(); 
+             PreparedStatement pstmt = conn.prepareStatement(countSql)) {
+            
+            pstmt.setInt(1, currentUserId); // 假設 currentUserId 是字串，若為 int 請改用 setInt
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                int currentCount = rs.getInt(1);
+                if (currentCount >= 5) { // 設定上限為 5 本，可自行調整
+                    JOptionPane.showMessageDialog(this, "借閱失敗：您已達同時借閱上限 (5本)！");
+                    return; // 中斷後續借閱流程
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "查詢借閱狀態失敗: " + ex.getMessage());
+            return;
+        }
+    	
+    	String[] daysOptions;
+    	int[] daysMapping;
+    	
 
+    	if ("VIP".equals(this.currentUserRole)) {
+    	    // VIP 可以借 1, 3, 7, 14 天
+    	    daysOptions = new String[]{"3 天", "7 天", "14 天", "28 天"};
+    	    daysMapping = new int[]{3, 7, 14, 28};
+    	} else {
+    	    // 一般用戶 (USER) 只能借 1, 3, 7 天
+    	    daysOptions = new String[]{"3 天", "7 天"};
+    	    daysMapping = new int[]{3, 7};
+    	}
+
+    	// 2. 顯示選擇對話框
+    	int choice = JOptionPane.showOptionDialog(this, "請選擇借閱期限：", "期限選擇", 
+    	             JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, daysOptions, daysOptions[0]);
+
+    	if (choice == -1) return; // 使用者按了取消
+
+    	// 3. 根據選擇取得天數 (不再需要複雜的 ?: 巢狀判斷)
+    	int days = daysMapping[choice];
+    	
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -629,7 +690,7 @@ public class MainApp extends JFrame {
         }
     }
 
-    // 💡 修正6：將預約者 ID 寫入 status 欄位中 (格式為 BORROWED_RES:用戶ID)
+    // 將預約者 ID 寫入 status 欄位中 (格式為 BORROWED_RES:用戶ID)
     private void handleReserve(int bookId, String currentRawStatus) {
         if (currentRawStatus.contains("RES:")) {
             JOptionPane.showMessageDialog(this, "此書籍已被其他讀者預約，請等候空位！", "提示", JOptionPane.WARNING_MESSAGE);
@@ -646,7 +707,7 @@ public class MainApp extends JFrame {
         } catch (Exception ex) { ex.printStackTrace(); }
     }
 
-    // 💡 修正6：登入時掃描有無符合當前使用者的 AVAILABLE_RES 預約到貨標記
+    // 登入時掃描有無符合當前使用者的 AVAILABLE_RES 預約到貨標記
     private void checkReservationNotifications() {
         String targetTag = "AVAILABLE_RES:" + currentUserId;
         String querySql = "SELECT id, title FROM books WHERE status = ?";
@@ -679,16 +740,32 @@ public class MainApp extends JFrame {
     private void checkOverdueAndReminders() {
         String sql = "SELECT r.*, b.title FROM borrow_records r JOIN books b ON r.book_id = b.id WHERE r.user_id = ? AND r.return_date IS NULL";
         try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, currentUserId); ResultSet rs = pstmt.executeQuery();
+            pstmt.setInt(1, currentUserId); // 若為字串則用 setString
+            ResultSet rs = pstmt.executeQuery();
             StringBuilder msg = new StringBuilder("到期提醒\n-------------------------------\n");
             boolean trigger = false;
+            int totalFine = 0; // 累積罰款
+
             while (rs.next()) {
                 LocalDateTime dueDate = rs.getTimestamp("due_date").toLocalDateTime();
                 long left = ChronoUnit.DAYS.between(LocalDateTime.now(), dueDate);
-                if (dueDate.isBefore(LocalDateTime.now())) { trigger = true; msg.append("已逾期：《").append(rs.getString("title")).append("》\n"); }
-                else if (left <= 3) { trigger = true; msg.append("剩餘 ").append(left).append(" 天到期：《").append(rs.getString("title")).append("》\n"); }
+                
+                if (dueDate.isBefore(LocalDateTime.now())) {
+                    trigger = true;
+                    long overdueDays = Math.abs(left);
+                    int fine = (int) (overdueDays * 50); 
+                    totalFine += fine;
+                    msg.append("【已逾期】").append(overdueDays).append(" 天 (罰款 $").append(fine)
+                       .append(")：《").append(rs.getString("title")).append("》\n");
+                } else if (left <= 3) {
+                    trigger = true;
+                    msg.append("【剩餘 ").append(left).append(" 天】：《").append(rs.getString("title")).append("》\n");
+                }
             }
-            if (trigger) JOptionPane.showMessageDialog(this, msg.toString(), "到期提醒", JOptionPane.WARNING_MESSAGE);
+            if (trigger) {
+                msg.append("\n總計待繳罰款：$").append(totalFine);
+                JOptionPane.showMessageDialog(this, msg.toString(), "提醒", JOptionPane.WARNING_MESSAGE);
+            }
         } catch (Exception ex) { ex.printStackTrace(); }
     }
 
