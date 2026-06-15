@@ -12,7 +12,9 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class MainApp extends JFrame {
-	
+	/**
+     * 初始化資料庫，導向Loginframe啟動頁面
+     */
     public static void main(String[] args) {
         try { 
             com.formdev.flatlaf.FlatLightLaf.setup(); 
@@ -20,32 +22,51 @@ public class MainApp extends JFrame {
         DatabaseManager.initializeDatabase(); 
         SwingUtilities.invokeLater(() -> new LoginFrame());
     }
-
+    /**
+     * UI元件
+     */
     private JPanel cardsPanel;
     private JScrollPane scrollPane;
     private JComboBox<String> cbSearchType;
     private JTextField txtSearchKeywords;
     private JButton btnSearch;
-    
+    /**
+     * 使用者狀態資訊
+     */
     private int currentUserId;
     private String currentUserName;
     private String currentUserRole;
-
+    /**
+     * 日期時間格式化
+     */
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
+    /**
+     * 配色設定
+     */
     private static final Color MORANDI_BG = new Color(240, 244, 248);       
     private static final Color MORANDI_CARD_BG = new Color(230, 237, 245);  
     private static final Color MORANDI_PRIMARY = new Color(90, 115, 142);   
     private static final Color MORANDI_TEXT = new Color(52, 73, 94);        
     private static final Color MORANDI_CHARCOAL = new Color(43, 48, 59);    
-
+    /**
+     * MainApp 的建構子
+     * 在建立視窗實例時，強制要求傳入使用者基本資訊，確保視窗初始化時擁有足夠的權限與身份資料。
+     * @param userId   使用者的唯一識別碼
+     * @param name     使用者的名稱
+     * @param role     使用者的職務角色 (用於後續判定功能權限，如：管理員 vs 一般員工)
+     */
     public MainApp(int userId, String name, String role) {
         this.currentUserId = userId;
         this.currentUserName = name;
         this.currentUserRole = role;
+        /**
+         * 呼叫initUI方法
+         */
         initUI();
     }
-
+    /**
+     * 初始化介面
+     */
     private void initUI() {
         setTitle("圖書館智慧管理系統");
         setSize(1150, 850); 
@@ -53,8 +74,9 @@ public class MainApp extends JFrame {
         setLocationRelativeTo(null);
         getContentPane().setBackground(MORANDI_BG);
         setLayout(new BorderLayout());
-
-        // ==================== 左側導覽功能面板 ====================
+        /**
+         * 左側面板介面
+         */
         JPanel sidePanel = new JPanel();
         sidePanel.setLayout(new BoxLayout(sidePanel, BoxLayout.Y_AXIS));
         sidePanel.setBackground(Color.WHITE);
@@ -101,7 +123,9 @@ public class MainApp extends JFrame {
         btnStudentSearch.setBackground(adminBtnColor); btnStudentSearch.setForeground(Color.WHITE);
         btnUserStatus.setBackground(adminBtnColor); btnUserStatus.setForeground(Color.WHITE);
         btnAdminAddBook.setBackground(adminBtnColor); btnAdminAddBook.setForeground(Color.WHITE);
-
+        /**
+         * 透過條件判斷用戶身分決定顯示的介面按鈕
+         */
         sidePanel.add(userCard); sidePanel.add(Box.createVerticalStrut(15));
         if (!"ADMIN".equals(this.currentUserRole)) {
             sidePanel.add(btnMyRecords); 
@@ -122,8 +146,9 @@ public class MainApp extends JFrame {
         sidePanel.add(Box.createVerticalGlue());
         sidePanel.add(btnLogout); sidePanel.add(Box.createVerticalStrut(25));
         add(sidePanel, BorderLayout.WEST);
-
-        // ==================== 右側上方智慧搜尋面板 ====================
+        /**
+         * 右側上方搜尋面板介面
+         */
         JPanel rightMainPanel = new JPanel(new BorderLayout());
         rightMainPanel.setBackground(MORANDI_BG);
 
@@ -150,8 +175,9 @@ public class MainApp extends JFrame {
         searchBarPanel.add(lblSearchHint); searchBarPanel.add(cbSearchType);
         searchBarPanel.add(txtSearchKeywords); searchBarPanel.add(btnSearch);
         rightMainPanel.add(searchBarPanel, BorderLayout.NORTH);
-
-        // ==================== 右側中央圖書卡片面板 ====================
+        /**
+         * 右側書籍列表介面
+         */
         cardsPanel = new JPanel();
         cardsPanel.setLayout(new GridLayout(0, 1, 0, 15)); 
         cardsPanel.setBackground(MORANDI_BG);
@@ -169,9 +195,13 @@ public class MainApp extends JFrame {
         rightMainPanel.add(scrollPane, BorderLayout.CENTER);
         
         add(rightMainPanel, BorderLayout.CENTER);
-
+        /**
+         * 刷新介面
+         */
         refreshBookCards("", "");
-
+        /**
+         * 搜尋功能
+         */
         btnSearch.addActionListener(e -> {
             String typeStr = (String) cbSearchType.getSelectedItem();
             String keyword = txtSearchKeywords.getText().trim();
@@ -181,8 +211,9 @@ public class MainApp extends JFrame {
             else if ("依出版者搜尋".equals(typeStr)) column = "publisher";
             refreshBookCards(column, keyword);
         });
-
-       
+        /**
+         * 全館借還紀錄功能
+         */
         btnAllHistory.addActionListener(e -> {
             StringBuilder sb = new StringBuilder();
             sb.append("全館借還紀錄：\n==================================================\n\n");
@@ -205,8 +236,9 @@ public class MainApp extends JFrame {
             } catch (Exception ex) { ex.printStackTrace(); }
             showTextPopup("全館借還紀錄", sb.toString());
         });
-
-        // 管理員不能停權管理員
+        /**
+         * 管理員停權與復權功能
+         */
         btnUserStatus.addActionListener(e -> {
             String queryInput = JOptionPane.showInputDialog(this, "請輸入使用者姓名或帳號：");
             if (queryInput == null || queryInput.trim().isEmpty()) return;
@@ -215,8 +247,9 @@ public class MainApp extends JFrame {
             ArrayList<String> userSnoList = new ArrayList<>();
             ArrayList<String> userStatusList = new ArrayList<>();
             ArrayList<String> userRoleList = new ArrayList<>();
-            
-            // 使用 TRIM 確保搜尋不受空格影響，檢查欄位名稱是否為 name, student_no
+            /**
+             * 使用 TRIM 確保搜尋不受空格影響，檢查欄位名稱是否為 name, student_no
+             */
             String findSql = "SELECT name, student_no, status, role_level FROM users WHERE name LIKE ? OR student_no LIKE ?";
 
             try (Connection conn = DatabaseManager.getConnection(); 
@@ -252,21 +285,23 @@ public class MainApp extends JFrame {
                 String targetSno = userSnoList.get(index);
                 String currentStatus = userStatusList.get(index);
                 String targetRoleLevel = userRoleList.get(index);
-                
-             // 不能停權自己
+                /**
+                 * 管理員不能停權自己
+                 */
                 if (targetSno.equals(this.currentUserId)) { 
                     JOptionPane.showMessageDialog(this, "您不能對自己的帳號進行停權操作！", "限制", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                
-                // 以角色等級判斷 (假設 "ADMIN" 或特定的 Level 代表管理員)
-                // 請根據你資料庫裡存的值，例如 "ADMIN" 或 "1" 等做調整
+                /**
+                 * 管理員不能停權其他管理員
+                 */
                 if ("ADMIN".equals(targetRoleLevel)) {
                     JOptionPane.showMessageDialog(this, "無法對管理員帳號進行停權/復權管制！", "控制失敗", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                
-                // 狀態變更
+                /**
+                 * 狀態變更
+                 */
                 String[] options = {"ACTIVE (啟用)", "SUSPENDED (停權)"};
                 int initialChoice = "ACTIVE".equals(currentStatus) ? 0 : 1;
                 int choice = JOptionPane.showOptionDialog(this, "目前狀態: " + currentStatus + "\n請選取變更後的狀態:", "狀態控制",
@@ -293,7 +328,9 @@ public class MainApp extends JFrame {
                 }
             }
         });
-
+        /**
+         * 個別借還記錄功能
+         */
         btnStudentSearch.addActionListener(e -> {
             String target = JOptionPane.showInputDialog(this, "請輸入要查詢的使用者姓名或帳號：");
             if (target == null || target.trim().isEmpty()) return;
@@ -313,7 +350,9 @@ public class MainApp extends JFrame {
             } catch (Exception ex) { ex.printStackTrace(); }
             showTextPopup("使用者個別借還書紀錄查詢結果", sb.toString());
         });
-
+        /**
+         * 新增書籍功能
+         */
         btnAdminAddBook.addActionListener(e -> {
             JTextField tTitle = new JTextField(); tTitle.setFont(new Font("Microsoft JhengHei", Font.PLAIN, 13));
             JTextField tAuthor = new JTextField(); tAuthor.setFont(new Font("Microsoft JhengHei", Font.PLAIN, 13));
@@ -329,7 +368,9 @@ public class MainApp extends JFrame {
                 } catch (Exception ex) { ex.printStackTrace(); }
             }
         });
-
+        /**
+         * 使用者個人借還紀錄功能
+         */
         btnMyRecords.addActionListener(e -> {
             StringBuilder sb = new StringBuilder("個人借還紀錄：\n==================================================\n\n");
             try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement("SELECT r.*, b.title FROM borrow_records r JOIN books b ON r.book_id = b.id WHERE r.user_id = ? ORDER BY r.borrow_date DESC")) {
@@ -343,7 +384,9 @@ public class MainApp extends JFrame {
             } catch (Exception ex) { ex.printStackTrace(); }
             showTextPopup("個人紀錄", sb.toString());
         });
-
+        /**
+         * 書籍借還紀錄功能
+         */
         btnBookHistory.addActionListener(e -> {
             String btitle = JOptionPane.showInputDialog(this, "請輸入書籍名稱：");
             if (btitle == null || btitle.trim().isEmpty()) return;
@@ -360,23 +403,27 @@ public class MainApp extends JFrame {
             } catch (Exception ex) { ex.printStackTrace(); }
             showTextPopup("書籍歷史", sb.toString());
         });
-
+        /**
+         * 登出功能，登出後自動跳轉回登入頁面
+         */
         btnLogout.addActionListener(e -> { this.dispose(); new LoginFrame(); });
         
         SwingUtilities.invokeLater(() -> {
             checkOverdueAndReminders();
-            checkReservationNotifications(); // 
+            checkReservationNotifications(); 
         });
-        refreshBookCards("", ""); // 初始化畫面
+        refreshBookCards("", "");
         setVisible(true);
     }
-
-    
+    /**
+     * 右側書籍列表排序方式
+     */
     private void refreshBookCards(String searchColumn, String keyword) {
     	cardsPanel.removeAll(); 
         cardsPanel.setVisible(false); 
-        
-        // 先獲取當前使用者未歸還的書籍與是否過期
+        /**
+         * 檢查書籍是否逾期
+         */
         Map<Integer, Long> overdueDaysMap = new HashMap<>();
         ArrayList<Integer> myBorrowedIds = new ArrayList<>();
 
@@ -387,8 +434,9 @@ public class MainApp extends JFrame {
             while (rs.next()) {
                 int bId = rs.getInt("book_id");
                 myBorrowedIds.add(bId);
-                
-                // 計算逾期天數
+                /**
+                 * 計算書籍逾期天數
+                 */
                 java.sql.Timestamp dueTs = rs.getTimestamp("due_date");
                 if (dueTs != null) {
                     LocalDateTime dueDate = dueTs.toLocalDateTime();
@@ -399,7 +447,9 @@ public class MainApp extends JFrame {
                 }
             }
         } catch (Exception e) { e.printStackTrace(); }
-
+        /**
+         * 書籍排序
+         */
         String sql = "SELECT * FROM books";
         boolean hasCondition = !searchColumn.isEmpty() && !keyword.isEmpty();
 
@@ -407,17 +457,21 @@ public class MainApp extends JFrame {
             sql += " WHERE " + searchColumn + " LIKE ?";
         }
 
-        // 2. 嚴謹的排序拼接 (使用 myBorrowedIds)
         if (myBorrowedIds != null && !myBorrowedIds.isEmpty()) {
-            // 產生 ID 字串 (例如: 1, 5, 8)
+            /**
+             * 產生ID字串
+             */
             String ids = myBorrowedIds.stream()
                                       .map(String::valueOf)
                                       .collect(java.util.stream.Collectors.joining(","));
-            
-            // 組合排序語句 (注意前面要有空格)
+            /**
+             * 組合排序語句
+             */
             sql += " ORDER BY CASE WHEN id IN (" + ids + ") THEN 1 ELSE 2 END ASC, id ASC";
         } else {
-            // 沒有借閱紀錄時，直接按 ID 排序
+            /**
+             * 沒有借閱紀錄時，直接按ID排序
+             */
             sql += " ORDER BY id ASC";
         }
         
@@ -434,11 +488,14 @@ public class MainApp extends JFrame {
                 String publisher = rs.getString("publisher"); 
                 int year = rs.getInt("publish_year");
                 String rawStatus = rs.getString("status"); 
-
-                // 解析複合型預約狀態 (例如 BORROWED_RES:2)
+                /**
+                 * 解析複合型預約狀態
+                 */
                 boolean isBorrowed = rawStatus.startsWith("BORROWED");
                 boolean isAvailable = "AVAILABLE".equals(rawStatus);
-
+                /**
+                 * 介面參數
+                 */
                 JPanel card = new JPanel(new BorderLayout(15, 10));
                 card.setBackground(Color.WHITE);
                 card.setBorder(BorderFactory.createCompoundBorder(
@@ -449,18 +506,23 @@ public class MainApp extends JFrame {
 
                 JPanel infoPanel = new JPanel(new GridLayout(3, 1, 2, 2)); 
                 infoPanel.setBackground(Color.WHITE);
-                
-                // 在書目中明確標出個人借閱狀態
+                /**
+                 * 標出個人借閱狀態
+                 */
                 String tagPrefix = "";
                 if (myBorrowedIds.contains(id)) {
                     if (overdueDaysMap.containsKey(id)) {
-                        // 顯示動態天數
+                        /**
+                         * 顯示逾期天數
+                         */
                         tagPrefix = "<font color='#c0392b'>[您的借閱已逾期 " + overdueDaysMap.get(id) + " 天！]</font> ";
                     } else {
                         tagPrefix = "<font color='#2980b9'>[您正借閱此書]</font> ";
                     }
                 }
-
+                /**
+                 * 介面參數
+                 */
                 JLabel lblTitle = new JLabel("<html><b>" + tagPrefix + "《 " + title + " 》</b></html>");
                 lblTitle.setFont(new Font("Microsoft JhengHei", Font.BOLD, 15));
                 lblTitle.setForeground(MORANDI_TEXT);
@@ -487,7 +549,9 @@ public class MainApp extends JFrame {
 
                 if (isAvailable) {
                     if (!isAdmin) {
-                        // 一般使用者：顯示借閱按鈕
+                        /**
+                         * 對使用者顯示借閱按鈕
+                         */
                         btnAction.setText("辦理借閱");
                         btnAction.setBackground(MORANDI_PRIMARY); 
                         btnAction.setForeground(Color.WHITE);
@@ -495,10 +559,14 @@ public class MainApp extends JFrame {
                         btnPanel.add(btnAction);
                     }
                 } else {
-                    // 書籍外借中
+                    /**
+                     * 書籍外借中
+                     */
                     if (myBorrowedIds.contains(id)) {
                         if (!isAdmin) {
-                            // 一般使用者：顯示歸還按鈕
+                            /**
+                             * 對使用者顯示歸還按鈕
+                             */
                             btnAction.setText("辦理歸還");
                             btnAction.setBackground(new Color(238, 240, 245)); 
                             btnAction.setForeground(MORANDI_TEXT);
@@ -506,7 +574,9 @@ public class MainApp extends JFrame {
                             btnPanel.add(btnAction);
                         }
                     } else {
-                        // 書籍被他人借走：僅限一般使用者顯示預約按鈕
+                        /**
+                         * 書籍被他人借走：對使用者顯示預約按鈕
+                         */
                         if (!isAdmin) {
                             JButton btnReserve = new JButton("線上預約書籍");
                             btnReserve.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
@@ -518,16 +588,18 @@ public class MainApp extends JFrame {
                         }
                     }
                 }
-
-                // 管理員下架管制 - 若被借出（isBorrowed）則禁用按鈕並提示
+                /**
+                 * 管理員下架書籍功能
+                 */
                 if ("ADMIN".equals(this.currentUserRole)) {
                     JButton btnDelete = new JButton("下架書籍");
                     btnDelete.setFont(new Font("Microsoft JhengHei", Font.BOLD, 12));
                     btnDelete.setBackground(new Color(230, 126, 115)); 
                     btnDelete.setForeground(Color.WHITE);
                     btnDelete.putClientProperty("JButton.buttonType", "roundRect");
-                    
-                    // 若外借中，鎖定按鈕
+                    /**
+                     * 管理員下架管制：若被借出(isBorrowed)則禁用按鈕並提示
+                     */
                     if (isBorrowed) {
                         btnDelete.setEnabled(false);
                         btnDelete.setToolTipText("書籍外借中，暫時無法下架");
@@ -536,7 +608,9 @@ public class MainApp extends JFrame {
                     btnDelete.addActionListener(e -> {
                         if (JOptionPane.showConfirmDialog(this, "確定要下架《" + title + "》嗎？", "確認下架", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                             try {
-                                // 執行刪除：即便不是外借中的書，也應清理其歷史借閱紀錄，保持資料庫整潔
+                                /**
+                                 * 執行刪除：即便不是外借中的書，也應清理其歷史借閱紀錄，保持資料庫整潔
+                                 */
                                 try (Connection conn1 = DatabaseManager.getConnection();
                                      PreparedStatement p1 = conn1.prepareStatement("DELETE FROM borrow_records WHERE book_id = ?")) {
                                     p1.setInt(1, id);
@@ -578,16 +652,21 @@ public class MainApp extends JFrame {
         cardsPanel.revalidate(); 
         cardsPanel.repaint();
     }
-
+    /**
+     * 使用者借閱功能
+     */
     private void handleBorrow(int bookId) {
     	String checkSql = "SELECT COUNT(*) FROM borrow_records WHERE user_id = ? AND return_date IS NULL AND due_date < NOW()";
         try (Connection conn = DatabaseManager.getConnection(); 
              PreparedStatement pstmt = conn.prepareStatement(checkSql)) {
             pstmt.setInt(1, currentUserId);
             ResultSet rs = pstmt.executeQuery();
+            /**
+             * 若逾期書籍未還則無法借閱
+             */
             if (rs.next() && rs.getInt(1) > 0) {
                 JOptionPane.showMessageDialog(this, "借閱失敗：您有書籍已逾期且未繳清罰款，請先完成歸還與罰款結清！");
-                return; // 嚴格阻擋借閱
+                return;
             }
         } catch (Exception ex) { ex.printStackTrace(); return; }
     	
@@ -595,13 +674,16 @@ public class MainApp extends JFrame {
         try (Connection conn = DatabaseManager.getConnection(); 
              PreparedStatement pstmt = conn.prepareStatement(countSql)) {
             
-            pstmt.setInt(1, currentUserId); // 假設 currentUserId 是字串，若為 int 請改用 setInt
+            pstmt.setInt(1, currentUserId); 
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 int currentCount = rs.getInt(1);
-                if (currentCount >= 5) { // 設定上限為 5 本，可自行調整
+                /**
+                 * 借閱上限5本，超過5本無法借閱
+                 */
+                if (currentCount >= 5) { 
                     JOptionPane.showMessageDialog(this, "借閱失敗：您已達同時借閱上限 (5本)！");
-                    return; // 中斷後續借閱流程
+                    return; 
                 }
             }
         } catch (Exception ex) {
@@ -613,24 +695,31 @@ public class MainApp extends JFrame {
     	String[] daysOptions;
     	int[] daysMapping;
     	
-
     	if ("VIP".equals(this.currentUserRole)) {
-    	    // VIP 可以借 1, 3, 7, 14, 28 天
+    	    /**
+    	     *  VIP可以借1, 3, 7, 14, 28天
+    	     */
     	    daysOptions = new String[]{"1 天", "3 天", "7 天", "14 天", "28 天"};
     	    daysMapping = new int[]{1, 3, 7, 14, 28};
     	} else {
-    	    // 一般用戶 (USER) 只能借 1, 3, 7, 14 天
+    	    /**
+    	     *  一般用戶(USER)只能借1, 3, 7, 14天
+    	     */
     	    daysOptions = new String[]{"1 天", "3 天", "7 天", "14 天"};
     	    daysMapping = new int[]{1, 3, 7, 14};
     	}
-
-    	// 2. 顯示選擇對話框
+		/**
+		 * 顯示借閱期限選擇框
+		 */
     	int choice = JOptionPane.showOptionDialog(this, "請選擇借閱期限：", "期限選擇", 
     	             JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, daysOptions, daysOptions[0]);
-
-    	if (choice == -1) return; // 使用者按了取消
-
-    	// 3. 根據選擇取得天數 (不再需要複雜的 ?: 巢狀判斷)
+    	/**
+    	 * 使用者按了取消
+    	 */
+    	if (choice == -1) return; 
+    	/**
+    	 * 根據選擇取得天數
+    	 */
     	int days = daysMapping[choice];
     	
         try (Connection conn = DatabaseManager.getConnection()) {
@@ -646,11 +735,13 @@ public class MainApp extends JFrame {
                 }
                 conn.commit();
                 JOptionPane.showMessageDialog(this, "借閱成功！");
-                // 成功才刷新
+                /**
+                 * 成功則刷新介面
+                 */
                 refreshBookCards("", "");
             } catch (Exception ex) { 
                 conn.rollback(); 
-                throw ex; // 拋出讓外層捕捉
+                throw ex;
             }
         } catch (Exception ex) { 
             ex.printStackTrace(); 
@@ -659,25 +750,31 @@ public class MainApp extends JFrame {
     }
 
     private void handleReturn(int bookId, String currentRawStatus) {
-        // 使用 try-with-resources 確保連線自動關閉
+        /**
+         * 使用try-with-resources確保連線自動關閉
+         */
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false); // 確保交易完整性
+            conn.setAutoCommit(false);
             try {
-                // 1. 處理書籍狀態：如果原本有預約標記，則轉移，否則設為 AVAILABLE
+                /**
+                 * 處理書籍狀態：如果原本有預約標記，則轉移，否則設為AVAILABLE
+                 */
                 String nextStatus = "AVAILABLE";
                 if (currentRawStatus != null && currentRawStatus.startsWith("BORROWED_RES:")) {
                     String resUserId = currentRawStatus.substring(13);
                     nextStatus = "AVAILABLE_RES:" + resUserId;
                 }
-
-                // 更新書籍狀態
+                /**
+                 * 更新書籍狀態
+                 */
                 try (PreparedStatement p1 = conn.prepareStatement("UPDATE books SET status = ? WHERE id = ?")) { 
                     p1.setString(1, nextStatus); 
                     p1.setInt(2, bookId); 
                     p1.executeUpdate(); 
                 }
-
-                // 2. 更新 borrow_records：標記歸還時間 (直接存入時間字串)
+				/**
+				 * 標記歸還時間 (直接存入時間字串)
+				 */
                 String nowStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                 
                 try (PreparedStatement p2 = conn.prepareStatement(
@@ -692,12 +789,15 @@ public class MainApp extends JFrame {
                     }
                 }
 
-                conn.commit(); // 確認所有操作
-                refreshBookCards("", ""); // 【強制同步】刷新介面
+                conn.commit(); 
+                refreshBookCards("", ""); 
                 JOptionPane.showMessageDialog(this, "書籍已成功歸還！");
                 
             } catch (Exception ex) { 
-                conn.rollback(); // 若發生錯誤則還原
+            	/**
+            	 * 若發生錯誤則還原
+            	 */
+                conn.rollback(); 
                 throw ex; 
             }
         } catch (Exception ex) { 
@@ -706,7 +806,12 @@ public class MainApp extends JFrame {
         }
     }
 
-    // 將預約者 ID 寫入 status 欄位中 (格式為 BORROWED_RES:用戶ID)
+    /**
+     * 使用者預約功能
+     * @param bookId
+     * @param currentRawStatus
+     * 將預約者ID寫入status 欄位中
+     */
     private void handleReserve(int bookId, String currentRawStatus) {
         if (currentRawStatus.contains("RES:")) {
             JOptionPane.showMessageDialog(this, "此書籍已被其他讀者預約，請等候空位！", "提示", JOptionPane.WARNING_MESSAGE);
@@ -722,8 +827,9 @@ public class MainApp extends JFrame {
             }
         } catch (Exception ex) { ex.printStackTrace(); }
     }
-
-    // 登入時掃描有無符合當前使用者的 AVAILABLE_RES 預約到貨標記
+    /**
+     * 登入時掃描有無符合當前使用者的AVAILABLE_RES預約到書標記
+     */
     private void checkReservationNotifications() {
         String targetTag = "AVAILABLE_RES:" + currentUserId;
         String querySql = "SELECT id, title FROM books WHERE status = ?";
@@ -742,7 +848,9 @@ public class MainApp extends JFrame {
             
             if (hasNotice) {
                 JOptionPane.showMessageDialog(this, sb.toString(), "預約書籍到書提醒", JOptionPane.INFORMATION_MESSAGE);
-                // 提醒後將狀態恢復成常規的 AVAILABLE
+                /**
+                 * 提醒後將狀態恢復成常規的AVAILABLE
+                 */
                 for (int bId : clearList) {
                     try (PreparedStatement up = conn.prepareStatement("UPDATE books SET status = 'AVAILABLE' WHERE id = ?")) {
                         up.setInt(1, bId); up.executeUpdate();
@@ -752,20 +860,24 @@ public class MainApp extends JFrame {
             }
         } catch (Exception ex) { ex.printStackTrace(); }
     }
-
+    /**
+     * 到期提醒功能
+     */
     private void checkOverdueAndReminders() {
         String sql = "SELECT r.*, b.title FROM borrow_records r JOIN books b ON r.book_id = b.id WHERE r.user_id = ? AND r.return_date IS NULL";
         try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, currentUserId); // 若為字串則用 setString
+            pstmt.setInt(1, currentUserId); 
             ResultSet rs = pstmt.executeQuery();
             StringBuilder msg = new StringBuilder("到期提醒\n-------------------------------\n");
             boolean trigger = false;
-            int totalFine = 0; // 累積罰款
+            int totalFine = 0;
 
             while (rs.next()) {
                 LocalDateTime dueDate = rs.getTimestamp("due_date").toLocalDateTime();
                 long left = ChronoUnit.DAYS.between(LocalDateTime.now(), dueDate);
-                
+                /**
+                 * 罰金機制(一天50元)
+                 */
                 if (dueDate.isBefore(LocalDateTime.now())) {
                     trigger = true;
                     long overdueDays = Math.abs(left);
@@ -784,8 +896,19 @@ public class MainApp extends JFrame {
             }
         } catch (Exception ex) { ex.printStackTrace(); }
     }
-
+    /**
+     * 時間格式轉換器
+     * 將資料庫的Timestamp物件轉換為易讀的字串
+     * @param ts：資料庫取得的Timestamp物件
+     * @return 格式化後的字串，若時間為null則回傳 "無"
+     */
     private String formatTimestamp(Timestamp ts) { return ts == null ? "無" : ts.toLocalDateTime().format(TIME_FORMATTER); }
+    /**
+     * 顯示長文字內容的彈出視窗
+     * 適用於顯示詳細內容（如：系統通知、長篇文章、詳細資料描述）
+     * @param title：彈出視窗的標題
+     * @param content：要顯示的文字內容
+     */
     private void showTextPopup(String title, String content) {
         JTextArea area = new JTextArea(content, 22, 60); area.setEditable(false);
         area.setFont(new Font("Microsoft JhengHei", Font.PLAIN, 13));
