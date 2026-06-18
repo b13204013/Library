@@ -53,7 +53,7 @@ public class MainApp extends JFrame {
      * 在建立視窗實例時，強制要求傳入使用者基本資訊，確保視窗初始化時擁有足夠的權限與身份資料。
      * @param userId   使用者的唯一識別碼
      * @param name     使用者的名稱
-     * @param role     使用者的職務角色 (用於後續判定功能權限，如：管理員 vs 一般員工)
+     * @param role     使用者的職務角色 (用於後續判定功能權限，例如：管理員 vs 使用者)
      */
     public MainApp(int userId, String name, String role) {
         this.currentUserId = userId;
