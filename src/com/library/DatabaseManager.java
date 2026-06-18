@@ -20,7 +20,9 @@ public class DatabaseManager {
 
     public static void initializeDatabase() {
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-            // 1. Users 表
+            /**
+             * Users資料庫
+             */
             stmt.execute("CREATE TABLE IF NOT EXISTS users (" +
                     "id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "student_no VARCHAR(50) UNIQUE, " +
@@ -30,7 +32,9 @@ public class DatabaseManager {
                     "status VARCHAR(50), " +
                     "created_at VARCHAR(50))");
 
-            // 2. Books 表
+            /**
+             * Books資料庫
+             */
             stmt.execute("CREATE TABLE IF NOT EXISTS books (" +
                     "id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "title VARCHAR(255), " +
@@ -39,7 +43,9 @@ public class DatabaseManager {
                     "publish_year INT, " +
                     "status VARCHAR(50) DEFAULT 'AVAILABLE')");
 
-            // 3. Borrow_records 表
+            /**
+             * Borrow_records資料庫
+             */
             stmt.execute("CREATE TABLE IF NOT EXISTS borrow_records (" +
                     "record_id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "user_id INT, " +
@@ -52,13 +58,17 @@ public class DatabaseManager {
                     "FOREIGN KEY(user_id) REFERENCES users(id), " +
                     "FOREIGN KEY(book_id) REFERENCES books(id))");
 
-            // 檢查是否需要匯入初始 JSON
+            /**
+             * 檢查是否需要匯入初始 JSON
+             */
             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM users");
             if (rs.next() && rs.getInt(1) == 0) {
                 importJsonData(conn);
             }
             
-            // 資料庫中沒有管理員，自動生成一個
+            /**
+             * 生成管理員
+             */
             try (PreparedStatement checkAdmin = conn.prepareStatement("SELECT COUNT(*) FROM users WHERE role_level = 'ADMIN'")) {
                 ResultSet rsAdmin = checkAdmin.executeQuery();
                 if (rsAdmin.next() && rsAdmin.getInt(1) == 0) {
@@ -84,7 +94,9 @@ public class DatabaseManager {
         Gson gson = new Gson();
         System.out.println("系統首次啟動：正在以 UTF-8 編碼解析 250 筆原始 JSON 並導入 SQL 資料庫...");
 
-        // 匯入 Users.json
+        /**
+         * 匯入Users.json
+         */
         List<User> jsonUsers;
         try (InputStreamReader isr = new InputStreamReader(new FileInputStream("Users.json"), StandardCharsets.UTF_8)) {
             jsonUsers = gson.fromJson(isr, new TypeToken<List<User>>(){}.getType());
@@ -100,7 +112,9 @@ public class DatabaseManager {
             pstmt.executeBatch();
         }
 
-        // 匯入 Books.json
+        /**
+         * 匯入Books.json
+         */
         List<Book> jsonBooks;
         try (InputStreamReader isr = new InputStreamReader(new FileInputStream("Books.json"), StandardCharsets.UTF_8)) {
             jsonBooks = gson.fromJson(isr, new TypeToken<List<Book>>(){}.getType());
@@ -116,7 +130,9 @@ public class DatabaseManager {
             pstmt.executeBatch();
         }
 
-        // 匯入 Borrow_records.json
+        /**
+         * 匯入Borrow_records.json
+         */
         List<BorrowRecord> jsonRecords;
         try (InputStreamReader isr = new InputStreamReader(new FileInputStream("Borrow_records.json"), StandardCharsets.UTF_8)) {
             jsonRecords = gson.fromJson(isr, new TypeToken<List<BorrowRecord>>(){}.getType());
